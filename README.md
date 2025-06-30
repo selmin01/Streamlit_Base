@@ -1,5 +1,15 @@
 # Streamlit_Base
 
+# Crie o ambiente virtual:
+python3 -m venv venv
+# Ative o ambiente virtual
+source venv/bin/activate
+
+# Instale as bibliotecas necessárias:
+pip install pandas streamlit
+
+
+
 - RODAR O PROJETO
 streamlit run index.py
 

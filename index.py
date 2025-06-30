@@ -58,7 +58,5 @@ def main():
     if message == 'button_click':
         st.write("Botão clicado!")
 
-    
-
 if __name__ == "__main__":
     main()
