@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import pycountry
 import plotly.express as px
 from babel.numbers import format_currency, format_decimal
 
@@ -18,6 +19,18 @@ st.set_page_config(
     page_icon="🌎",
     layout="wide"
 )
+st.markdown("""
+<style>
+body {
+    background-color: #f9fafb;
+    color: #333;
+    font-family: 'Segoe UI', sans-serif;
+}
+h1, h2, h3 {
+    color: #1f77b4;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ========== FILTROS NA SIDEBAR ==========
 with st.sidebar:
@@ -184,17 +197,118 @@ with coluna2:
     # Exibir no app
     st.plotly_chart(fig, use_container_width=True)
 
+# ========== GRÁFICOS VISUAIS COMPLEMENTARES ==========
+st.markdown("## 📈 Visões Gráficas Complementares")
+col_a, col_b = st.columns(2)
+
+# ====== GRÁFICO DE LINHA (compacto) ======
+with col_a:
+    st.markdown("#### 🔄 Evolução Anual das Exportações (Compacto)")
+    df_evolucao = df_filtrado.groupby("Ano")["Valor_FOB_USD"].sum().reset_index()
+
+    fig_linha = px.line(
+        df_evolucao,
+        x="Ano",
+        y="Valor_FOB_USD",
+        markers=True,
+        height=300
+    )
+    fig_linha.update_layout(margin=dict(t=40, b=20))
+    st.plotly_chart(fig_linha, use_container_width=True)
+
+# ====== GRÁFICO DE BARRAS (compacto) ======
+with col_b:
+    st.markdown("#### 🥇 Top Países por Valor Exportado")
+    df_bar = df_filtrado.groupby("Países")["Valor_FOB_USD"].sum().sort_values().tail(7).reset_index()
+
+    fig_bar = px.bar(
+        df_bar,
+        x="Valor_FOB_USD",
+        y="Países",
+        orientation="h",
+        height=300
+    )
+    fig_bar.update_layout(margin=dict(t=40, b=20))
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+st.markdown("## 🧪 Dispersão: Valor FOB vs Peso (kg)")
+
+# Verifica se os dados necessários estão presentes e válidos
+df_disp = df_filtrado[["Código NCM", "Valor_FOB_USD", "Peso_Kg"]].copy()
+df_disp = df_disp.dropna()
+df_disp = df_disp[df_disp["Valor_FOB_USD"] > 0]
+df_disp = df_disp[df_disp["Peso_Kg"] > 0]
+
+# Agrupamento por produto
+df_disp_grouped = df_disp.groupby("Código NCM").agg({
+    "Valor_FOB_USD": "sum",
+    "Peso_Kg": "sum"
+}).reset_index()
+
+# Conversão do código NCM para texto
+df_disp_grouped["Código NCM"] = df_disp_grouped["Código NCM"].astype(str).str.zfill(8)
+
+# Gráfico de dispersão
+fig_disp = px.scatter(
+    df_disp_grouped,
+    x="Peso_Kg",
+    y="Valor_FOB_USD",
+    text="Código NCM",
+    size="Valor_FOB_USD",
+    color="Valor_FOB_USD",
+    title="🎯 Dispersão entre Peso (kg) e Valor FOB (US$) por Código NCM",
+    labels={"Peso_Kg": "Peso Total (kg)", "Valor_FOB_USD": "Valor FOB Total (US$)"},
+    height=450
+)
+
+fig_disp.update_traces(textposition="top center", marker=dict(opacity=0.6))
+fig_disp.update_layout(showlegend=False)
+
+st.plotly_chart(fig_disp, use_container_width=True)
+
+
+# ========== GRÁFICO EXTRA: Exportações por Produto ==========
+st.markdown("## 🧾 Exportações por Código NCM (Produto)")
+
+if "Código NCM" in df_filtrado.columns and not df_filtrado.empty:
+    df_produtos = (
+        df_filtrado
+        .groupby("Código NCM")["Valor_FOB_USD"]
+        .sum()
+        .sort_values(ascending=False)
+        .head(5)  # ⬅️ Alterado aqui de 10 para 5
+        .reset_index()
+    )
+    df_produtos["Código NCM"] = df_produtos["Código NCM"].astype(str).str.zfill(8)
+
+    if not df_produtos.empty:
+        fig_produtos = px.bar(
+            df_produtos,
+            x="Código NCM",
+            y="Valor_FOB_USD",
+            title="📦 Top 5 Produtos Exportados (por NCM)",
+            height=350
+        )
+        fig_produtos.update_layout(
+            xaxis_title="Código NCM",
+            yaxis_title="Valor FOB (US$)"
+        )
+        st.plotly_chart(fig_produtos, use_container_width=True)
+    else:
+        st.info("Nenhum dado disponível para exibir o gráfico.")
+else:
+    st.warning("Coluna 'Código NCM' não encontrada ou dados filtrados vazios.")
+
 
 
 # ============ INDICADORES AVANÇADOS ============
 st.markdown("---")
-st.markdown("## Indicadores Avançados de Exportação")
+st.markdown("## 📊 Indicadores Avançados de Exportação")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "📈 Crescimento Médio Anual",
     "💳 Ticket Médio por Tonelada",
-    "🌍 Participação por País",
-    "🔥 Produtos com Maior Valor FOB/Peso"
+    "🌍 Participação por País"
 ])
 
 # 1. Crescimento médio anual por país e NCM
@@ -204,7 +318,7 @@ with tab1:
     df_crescimento = df_crescimento.sort_values(by=["Países", "Código NCM", "Ano"])
     df_crescimento["Crescimento (%)"] = df_crescimento.groupby(["Países", "Código NCM"])["Valor_FOB_USD"].pct_change() * 100
     df_crescimento_medio = df_crescimento.groupby(["Países", "Código NCM"])["Crescimento (%)"].mean().reset_index()
-    st.dataframe(df_crescimento_medio, use_container_width=True)
+    st.dataframe(df_crescimento_medio.round(2), width=800, height=300)
 
 # 2. Ticket médio por tonelada
 with tab2:
@@ -212,7 +326,7 @@ with tab2:
     df_ticket_medio = df_filtrado.groupby("Países").apply(
         lambda x: x["Valor_FOB_USD"].sum() / x["Peso_Kg"].sum()
     ).reset_index(name="Ticket Médio (US$/kg)")
-    st.dataframe(df_ticket_medio, use_container_width=True)
+    st.dataframe(df_ticket_medio.round(2), width=600, height=300)
 
 # 3. Participação percentual por país
 with tab3:
@@ -221,13 +335,5 @@ with tab3:
     df_participacao["% Participação"] = (
         df_participacao["Valor_FOB_USD"] / df_participacao["Valor_FOB_USD"].sum()
     ) * 100
-    st.dataframe(df_participacao.sort_values(by="% Participação", ascending=False), use_container_width=True)
+    st.dataframe(df_participacao.sort_values(by="% Participação", ascending=False).round(2), width=700, height=300)
 
-# 4. Produtos com maior relação valor FOB / peso
-with tab4:
-    st.markdown("### 🔥 Produtos com maior relação Valor FOB / Peso (kg)")
-    df_relacao_valor_peso = df_filtrado.copy()
-    df_relacao_valor_peso["Valor_por_Kg"] = df_relacao_valor_peso["Valor_FOB_USD"] / df_relacao_valor_peso["Peso_Kg"]
-    df_top_valor_peso = df_relacao_valor_peso.groupby(["Código NCM", "Descrição NCM"])["Valor_por_Kg"].mean() \
-        .reset_index().sort_values(by="Valor_por_Kg", ascending=False).head(10)
-    st.dataframe(df_top_valor_peso, use_container_width=True)

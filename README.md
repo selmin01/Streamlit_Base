@@ -4,6 +4,9 @@
 python3 -m venv venv
 # Ative o ambiente virtual
 source venv/bin/activate
+# Desative o ambiente virtual
+deactivate
+
 
 # Instale as bibliotecas necessárias:
 pip install pandas streamlit

@@ -1,13 +1,13 @@
 import pandas as pd
 
 # Caminho do seu arquivo
-caminho_arquivo = "../H_EXPORTACAO_GERAL_2020-01_2024-12_DT20250625.xlsx"
+caminho_arquivo = "/Users/anselmoramos/Documents/Docs/Streamlit_Base/exportacao/data/H_EXPORTACAO_GERAL_2020-01_2024-12_DT20250625.xlsx"
 
 # Carregar a planilha
 df = pd.read_excel(caminho_arquivo)
 
 # Colunas fixas
-id_vars = ['Países', 'Código NCM', 'Descrição NCM']
+id_vars = ['Países', 'Código NCM', 'Descrição NCM', 'Unidade estatística']
 
 # Separar colunas por tipo de dado
 valor_cols = [col for col in df.columns if 'Valor US$ FOB' in col]
