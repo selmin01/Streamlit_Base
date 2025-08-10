@@ -11,8 +11,6 @@ deactivate
 # Instale as bibliotecas necessárias:
 pip install pandas streamlit
 
-
-
 - RODAR O PROJETO
 streamlit run index.py
 
